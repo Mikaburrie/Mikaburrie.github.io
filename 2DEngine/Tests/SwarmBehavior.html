@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <title>Swarm Behavior</title>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            var disp, dt, organisms = [], updated = false;
+            use("display", function(){
+                disp = new Display(1280, 720, "#111", document.getElementById("canvas-area"));
+            });
+            use("time", function(){
+                dt = new DeltaTime(1/60);
+            });
+
+            Organism.distanceThreshold = 30;
+            Organism.avoidance = 0.03;
+            Organism.alignment = 0.02;
+            Organism.cohesion = 0.002;
+            Organism.minSpeed = 5;
+            Organism.size = 2;
+            Organism.count = 100;
+            Organism.showRange = true;
+            Organism.showNeighborConnections = true;
+            Organism.showVelocity = true;
+            Organism.drag = 0.98;
+            function Organism(x, y){
+                this.x = x;
+                this.y = y;
+                this.velX = Math.random() - 0.5;
+                this.velY = Math.random() - 0.5;
+                this.newVelX = 0;
+                this.newVelY = 0;
+                this.neighbors = [];
+            }
+
+            Organism.prototype.informNeighbor = function(neighbor){
+                this.neighbors.push(neighbor);
+            };
+
+            Organism.prototype.calculateMovement = function(){
+                let speed = Math.hypot(this.velX, this.velY);
+                if(speed < Organism.minSpeed){
+                    this.newVelX += this.velX * 0.1 + (Math.random() - 0.5);
+                    this.newVelY += this.velY * 0.1 + (Math.random() - 0.5);
+                }
+
+                if(this.neighbors.length == 0){
+                    return;
+                }
+
+                let scale, xVelAvg = 0, yVelAvg = 0, xAvg = 0, yAvg = 0;
+                for(var i in this.neighbors){
+                    scale = Math.pow(1 - (this.neighbors[i].distance / (Organism.distanceThreshold * 2)), 3);
+                    this.newVelX -= this.neighbors[i].x * scale * Organism.avoidance;
+                    this.newVelY -= this.neighbors[i].y * scale * Organism.avoidance;
+
+                    xVelAvg += this.neighbors[i].organism.velX;
+                    yVelAvg += this.neighbors[i].organism.velY;
+                    xAvg += this.neighbors[i].x;
+                    yAvg += this.neighbors[i].y;
+                }
+
+                xVelAvg /= this.neighbors.length;
+                yVelAvg /= this.neighbors.length;
+                xAvg /= this.neighbors.length;
+                yAvg /= this.neighbors.length;
+
+
+                this.newVelX += (xVelAvg - this.velX) * Organism.alignment;
+                this.newVelY += (yVelAvg - this.velY) * Organism.alignment;
+                this.newVelX += xAvg * Organism.cohesion;
+                this.newVelY += yAvg * Organism.cohesion;
+
+            };
+
+            Organism.prototype.update = function(){
+                this.newVelX *= Organism.drag;
+                this.newVelY *= Organism.drag;
+                this.velX = this.newVelX;
+                this.velY = this.newVelY;
+                this.x += this.velX;
+                this.y += this.velY;
+                if(this.x < 0){this.x += disp.width;}
+                if(this.x > disp.width){this.x -= disp.width;}
+                if(this.y < 0){this.y += disp.height;}
+                if(this.y > disp.height){this.y -= disp.height;}
+            };
+
+            Organism.prototype.render = function(){
+                disp.canvas.fillStyle = "#fff";
+                disp.canvas.beginPath();
+                disp.canvas.moveTo(this.x, this.y);
+                disp.canvas.arc(this.x, this.y, Organism.size, 0, Math.PI * 2);
+                if(this.x < Organism.size){disp.canvas.moveTo(this.x + disp.width, this.y); disp.canvas.arc(this.x + disp.width, this.y, Organism.size, 0, Math.PI * 2);}
+                if(this.y < Organism.size){disp.canvas.moveTo(this.x, this.y + disp.height); disp.canvas.arc(this.x, this.y + disp.height, Organism.size, 0, Math.PI * 2);}
+                if(this.x > disp.width - Organism.size){disp.canvas.moveTo(this.x - disp.width, this.y); disp.canvas.arc(this.x - disp.width, this.y, Organism.size, 0, Math.PI * 2);}
+                if(this.y > disp.height - Organism.size){disp.canvas.moveTo(this.x, this.y - disp.height); disp.canvas.arc(this.x, this.y - disp.height, Organism.size, 0, Math.PI * 2);}
+                disp.canvas.fill();
+
+                disp.canvas.fillStyle = "rgba(255, 255, 255, 0.1)";
+                disp.canvas.strokeStyle = "rgba(255, 255, 255, 0.5)";
+
+                if(Organism.showRange){
+                    disp.canvas.beginPath();
+                    disp.canvas.arc(this.x, this.y, Organism.distanceThreshold, 0, Math.PI * 2);
+                    if(this.x < Organism.distanceThreshold){disp.canvas.moveTo(this.x + disp.width, this.y); disp.canvas.arc(this.x + disp.width, this.y, Organism.distanceThreshold, 0, Math.PI * 2);}
+                    if(this.y < Organism.distanceThreshold){disp.canvas.moveTo(this.x, this.y + disp.height); disp.canvas.arc(this.x, this.y + disp.height, Organism.distanceThreshold, 0, Math.PI * 2);}
+                    if(this.x > disp.width - Organism.distanceThreshold){disp.canvas.moveTo(this.x - disp.width, this.y); disp.canvas.arc(this.x - disp.width, this.y, Organism.distanceThreshold, 0, Math.PI * 2);}
+                    if(this.y > disp.height - Organism.distanceThreshold){disp.canvas.moveTo(this.x, this.y - disp.height); disp.canvas.arc(this.x, this.y - disp.height, Organism.distanceThreshold, 0, Math.PI * 2);}
+                    disp.canvas.fill();
+                }
+
+                if(Organism.showNeighborConnections){
+                    for(var i in this.neighbors){
+                        disp.canvas.beginPath();
+                        disp.canvas.moveTo(this.x, this.y);
+                        disp.canvas.lineTo(this.x + this.neighbors[i].x, this.y + this.neighbors[i].y);
+                        disp.canvas.stroke();
+                    }
+                }
+
+                if(Organism.showVelocity){
+                    let magnitude = Math.hypot(this.velX, this.velY) * 0.3;
+                    disp.canvas.beginPath();
+                    disp.canvas.moveTo(this.x, this.y);
+                    disp.canvas.lineTo(this.x + this.velX/magnitude * Organism.size, this.y + this.velY/magnitude * Organism.size);
+                    disp.canvas.stroke();
+                }
+
+                this.neighbors.length = 0;
+            };
+
+            Organism.determineNeighbors = function(a, b){
+                var xDiff = a.x - b.x, yDiff = a.y - b.y;
+                if(xDiff > disp.width - this.distanceThreshold * 2){
+                    xDiff -= disp.width;
+                }else if(xDiff < -disp.width + this.distanceThreshold * 2){
+                    xDiff += disp.width;
+                }
+
+                if(yDiff > disp.height - this.distanceThreshold * 2){
+                    yDiff -= disp.height;
+                }else if(yDiff < -disp.height + this.distanceThreshold * 2){
+                    yDiff += disp.height;
+                }
+
+                let dist = 0;
+                if((dist = Math.hypot(xDiff, yDiff)) < this.distanceThreshold * 2){
+                    a.informNeighbor({organism: b, x: -xDiff, y: -yDiff, distance: dist});
+                    b.informNeighbor({organism: b, x: xDiff, y: yDiff, distance: dist});
+                }
+            };
+
+
+
+            function run(){
+                Organism.avoidance = getValueOf("avoidance");
+                Organism.alignment = getValueOf("alignment");
+                Organism.cohesion = getValueOf("cohesion");
+
+                Organism.minSpeed = getValueOf("minSpeed");
+                Organism.drag = getValueOf("drag");
+                Organism.distanceThreshold = getValueOf("distanceThreshold");
+                Organism.size = getValueOf("size");
+                Organism.count = getValueOf("count");
+
+                Organism.showRange = getValueOf("showRange");
+                Organism.showNeighborConnections = getValueOf("showNeighborConnections");
+                Organism.showVelocity = getValueOf("showVelocity");
+
+                dt.setFps(getValueOf("targetFps"));
+                dt.findDelta();
+                document.getElementById("targetFpsAmt").innerHTML = getValueOf("targetFps");
+                document.getElementById("fps").innerHTML = Math.round(dt.getFps());
+
+                manageOrganismPopulation();
+
+                update();
+                render();
+
+                loop(run);
+            }
+
+            function update(){
+                let dist = 0;
+                for(var i in organisms){
+                    for(var j = Number(i) + 1; j < organisms.length; j++){
+                        Organism.determineNeighbors(organisms[i], organisms[j]);
+                    }
+                    organisms[i].calculateMovement();
+                }
+            }
+
+            function render(){
+                disp.canvas.clearScreen();
+                for(var i in organisms){
+                    organisms[i].render();
+                    organisms[i].update();
+                }
+            }
+
+            function manageOrganismPopulation(){
+                organisms.length = Organism.count;
+                for(var i = organisms.length - 1; organisms[i] == undefined && i >= 0; i--){
+                    organisms[i] = new Organism(Math.randInt(0, disp.width), Math.randInt(0, disp.height));
+                }
+            }
+
+            function getValueOf(id){
+                let e = document.getElementById(id);
+                if(e.type == "checkbox"){
+                    return e.checked;
+                }else{
+                    return e.value;
+                }
+            }
+
+            engine.onload = run;
+        </script>
+    </head>
+    <body>
+        <style type="text/css">
+            .input-area{
+                display: inline-block;
+                position: absolute;
+                top: 0px;
+                height:100%;
+                width: 200px;
+                margin: 5px;
+            }
+        </style>
+        <span id="canvas-area"></span>
+        <div class="input-area">
+            Avoidance: <br/>
+            <input type="range" min="0" max="1" step="0.001" id="avoidance" value="0.035"></input> <br/>
+            Alignment: <br/>
+            <input type="range" min="0" max="1" step="0.001" id="alignment" value="0.03"></input> <br/>
+            Cohesion: <br/>
+            <input type="range" min="0" max="0.1" step="0.001" id="cohesion" value="0.003"></input> <br/>
+            <br/>
+            Minimum Speed: <br/>
+            <input type="range" min="0" max="10" step="0.1" id="minSpeed" value="3"></input> <br/>
+            Drag: <br/>
+            <input type="range" min="0" max="1" step="0.01" id="drag" value="0.98"></input> <br/>
+            Neighbor Range: <br/>
+            <input type="range" min="0" max="1000" step="1" id="distanceThreshold" value="30"></input> <br/>
+            Organism Size: <br/>
+            <input type="range" min="0" max="25" step="1" id="size" value="5"></input> <br/>
+            Organism Count: <br/>
+            <input type="range" min="0" max="1000" step="1" id="count" value="30"></input> <br/>
+            <br/>
+            Show Range: <br/>
+            <input type="checkbox" id="showRange"></input> <br/>
+            Show Neighbor Connections: <br/>
+            <input type="checkbox" id="showNeighborConnections"></input> <br/>
+            Show Velocity: <br/>
+            <input type="checkbox" id="showVelocity" checked></input> <br/>
+            <br/>
+            <!-- Target FPS: --> <span id="targetFpsAmt" hidden></span> <br/>
+            <input type="range" min="0" max="60" step="1" id="targetFps" hidden></input> <br/>
+            <!-- Current FPS: --> <br/>
+            <span id="fps" hidden> <br/>
+
+        </div>
+    </body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Multi Test</title>
+        <meta charset="UTF-8"/>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /* global use engine Multi Display loop Keyboard DeltaTime */
+            use("multiplayer", function(){
+                Multi.oncreateobject = function(obj){
+                    objs.push(obj);
+                };
+                
+                Multi.onopen = function(){
+                    run();
+                };
+                
+                Multi.setObjectArray(objs);
+                Multi.registerClass(Player, "Player");
+                Multi.registerClass(Test, "Test");
+                Multi.registerClass(Bullet, "Bullet");
+                Multi.predictErrorThreshold = 10;
+            });
+            use("display");
+            use("keyboard");
+            use("time");
+            
+            var disp, objs = [], dt;
+            function init(){
+                disp = new Display(800, 600, "#eee");
+                dt = new DeltaTime();
+                Keyboard.init();
+                Multi.init("wss://game-to-be-renamed-mikaburrie.c9users.io");
+            }
+            
+            function run(){
+                dt.findDelta();
+                
+                if(Multi.dataBuffer.length > 0){
+                    //console.log(Multi.dataBuffer[0].tick)
+                }
+                
+                disp.canvas.fillStyle = "rgba(255, 255, 255, 0.7)";
+                disp.canvas.fillRect(0, 0, disp.width, disp.height);
+                
+                for(var i = 0; i < objs.length; i++){
+                    objs[i].update();
+                    objs[i].render();
+                    
+                    if(objs[i].del){
+                        objs.splice(i, 1);
+                        i--;
+                    }
+                }
+                
+                Keyboard.update();
+                Multi.update();
+                loop(run);
+            }
+            
+            function Player(x, y){
+                this.x = x;
+                this.y = y;
+                this.velX = 0;
+                this.velY = 0;
+                this.width = 20;
+                this.height = 20;
+                this.speed = .5;
+                this.drag = 0.9;
+            }
+            
+            Player.prototype.update = function(){
+                if(Multi.isPlayer(this)){
+                    if(Keyboard.getKey("w")){
+                        Multi.sendInput("w");
+                    }
+                    
+                    if(Keyboard.getKey("a")){
+                        Multi.sendInput("a");
+                    }
+                    
+                    if(Keyboard.getKey("s")){
+                        Multi.sendInput("s");
+                    }
+                    
+                    if(Keyboard.getKey("d")){
+                        Multi.sendInput("d");
+                    }
+                    
+                    if(Keyboard.justPressed("space")){
+                        Multi.sendInput("shoot");
+                    }
+                }
+            };
+            
+            Player.prototype.predict = function(inputFrame){
+                if(inputFrame.w){
+                    this.velY -= this.speed;
+                }
+                if(inputFrame.a){
+                    this.velX -= this.speed;
+                }
+                if(inputFrame.s){
+                    this.velY += this.speed;
+                }
+                if(inputFrame.d){
+                    this.velX += this.speed;
+                }
+                this.x += this.velX;
+                this.y += this.velY;
+                this.velX *= this.drag;
+                this.velY *= this.drag;
+            };
+            
+            Player.prototype.render = function(){
+                disp.canvas.fillStyle = "#000";
+                disp.canvas.fillRect(this.x, this.y, this.width, this.height);
+            };
+            
+            function Bullet(){
+                this.x = 0;
+                this.y = 0;
+            }
+            
+            Bullet.prototype.update = function(){};
+            
+            Bullet.prototype.render = function(){
+                disp.canvas.fillStyle = "#f00";
+                disp.canvas.fillRect(this.x, this.y, 10, 10);
+            };
+            
+            function Test(){
+                this.x = 0;
+                this.y = 0;
+                this.angle = 0;
+            }
+            
+            Test.prototype.update = function(){
+                this.x = 200 * Math.cos(this.angle) + 300;
+                this.y = 200 * Math.sin(this.angle) + 300;
+            };
+            
+            Test.prototype.render = function(){
+                disp.canvas.fillStyle = "#00F";
+                disp.canvas.fillRect(this.x, this.y, 10, 10);
+            };
+            
+            engine.onload = init;
+        </script>
+    </head>
+    <body>
+        
+    </body>
+</html>

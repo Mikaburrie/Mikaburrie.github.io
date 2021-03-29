@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>
+            2D Engine Test
+        </title>
+        <meta charset="UTF-8"/>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /*global use Display engine Vector loop DeltaTime*/
+            var disp, vecs = [], point, delta, loops = 0;
+            
+            use("display", function(){
+                disp = new Display(600, 300, "#000");
+                disp.canvas.imageSmoothingEnabled = false;
+                disp.canvasElement.style.imageRendering = "pixelated";
+                disp.canvas.fillStyle = "#fff";
+            });
+            
+            use("time");
+            
+            use("keyboard");
+            use("mouse");
+            
+            use("simpPhysics");
+            
+            
+            function run(){
+                delta.findDelta();
+                
+                disp.canvas.clearScreen();
+                
+                for(var i in vecs){
+                    vecs[i] = vecs[i].rotate(point, Math.PI/180 * delta.delta);
+                }
+                
+                disp.canvas.strokeStyle = "#ffff00";
+                for (i = 0; i < vecs.length; i++){
+                    for(var j = i + 1; j < vecs.length; j++){
+                        disp.canvas.line(vecs[i].x, vecs[i].y, vecs[j].x, vecs[j].y);
+                    }
+                }
+                
+                disp.canvas.fillStyle = "#ffffff";
+                for(i in vecs){
+                    disp.canvas.fillRect(vecs[i].x - 2, vecs[i].y - 2, 3, 3);
+                }
+                disp.canvas.fillRect(point.x - 1, point.y - 1, 3, 3);
+                
+                disp.canvas.fillText(delta.delta.toString().substr(0, 4), 10, 10, 11);
+                
+                loops++;
+                loop(run);
+            }
+            
+            engine.onload = function(){
+                vecs.push(new Vector(250, 100), new Vector(350, 100),
+                          new Vector(250, 200), new Vector(350, 200));
+                point = new Vector(300, 150);
+                delta = new DeltaTime();
+                
+                run();
+            };
+            
+        </script>
+    </head>
+    <body>
+        
+    </body>
+</html>

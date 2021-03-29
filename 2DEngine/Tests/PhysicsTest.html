@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>
+            Physics Test
+        </title>
+        <meta charset="UTF-8"/>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /* global use Bitmap engine PhysicsEngine SimpleRadialGravity loop TestCube DeltaTime Timer extend Display*/
+            var disp, physics, dt, time, del = 0;
+            
+            use("display", function(){
+                disp = new Display(800, 450, "#000");
+                disp.setRenderStyle("pixelated");
+            });
+            use("time");
+            use("simpPhysics");
+            
+            function Cube(x, y, width, height, velX, velY){
+                TestCube.call(this, x, y, width, height, velX + ((Math.random() - 0.5)/5), velY + ((Math.random() - 0.5)/5));
+            }
+            
+            
+            engine.onload = function(){
+                //extend TestCube now that it is loaded and replace render method.
+                extend(Cube, TestCube);
+                Cube.prototype.render = function(surface, integration){
+                    surface.fillStyle = "#" + (Math.round(this.y - 100) < 16 ? "0" : "") + Math.round(this.y - 100).toString(16) + "0000";
+                    surface.fillRect(this.x + this.velX * integration, this.y + this.velY * integration, this.width, this.height);
+                };
+                
+                dt = new DeltaTime(1/60);
+                time = new Timer();
+                physics = new PhysicsEngine(new SimpleRadialGravity(disp.width/2, disp.height/2, 1000, 200), disp.canvas);
+                physics.addObject(new Cube(175, 225, 2, 2, 0, 0.5));
+                run();
+            };
+            
+            function run(){
+                if(physics.objects.length > 1000){
+                    del = 1;
+                    physics.objects.length -= del;
+                }
+                
+                if(del){
+                    if(del > physics.objects.length){
+                        physics.objects.length = 0;
+                        del = 0;
+                    }else{
+                        physics.objects.length -= del;
+                        del++;
+                    }
+                }
+                
+                time.start();
+                //add next frame to be processed asap
+                loop(run);
+                
+                //clear screen
+                disp.canvas.clearRect(0, 0, disp.width, disp.height);
+                
+                //get delta and loop through
+                dt.findDelta();
+                dt.loopDelta(function(){physics.update();});
+                    
+                
+                //render
+                physics.drawObjects(dt.accumulator);
+                physics.addObject(new Cube(175 + Math.randInt(-20, 20), 225, 2, 2, 0, 0.5));
+                physics.addObject(new Cube(300, 300, 2, 2, 0, 0.5));
+                if(time.stop() > 16){
+                    console.log(time.duration);
+                }
+            }
+            
+        </script>
+    </head>
+    <body>
+        
+    </body>
+</html>

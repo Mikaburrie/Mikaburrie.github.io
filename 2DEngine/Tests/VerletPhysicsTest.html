@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>
+            Verlet Physics Test
+        </title>
+        <meta charset="UTF-8"/>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /* global use engine loop DeltaTime Display Vector2 Mouse*/
+            var disp, system;
+
+            use("display", function(){
+                disp = new Display(1000, 600, "#000");
+                disp.setRenderStyle("pixelated");
+                disp.setStyle("border", "2px solid #555");
+                disp.canvas.lineWidth = 10;
+                disp.canvas.lineCap = "round";
+            });
+            use("time");
+            use("simpPhysics");
+            use("mouse");
+
+            function Particle(x, y){
+                this.pos = new Vector2(x, y);
+                this.prevPos = new Vector2(x, y);
+                this.force = new Vector2(0, 0);
+                this.locked = false;
+            }
+
+            Particle.prototype.verletUpdate = function(step){
+                if(this.locked){
+                    return;
+                }
+
+                let temp = new Vector2(this.pos.x, this.pos.y);
+                // CurrentPos += (CurrentPos-PreviousPos)+(Forces*TimeStep^2);
+                this.pos = this.pos.add((this.pos.sub(this.prevPos)).add(this.force.mult(step * step)));
+                this.prevPos = new Vector2(temp.x, temp.y);
+            };
+
+            Particle.prototype.render = function(){
+                disp.canvas.fillStyle = "#fff";
+            //    disp.canvas.fillRect(this.pos.x - 5, this.pos.y - 5, 10, 10);
+            };
+
+
+
+            function Constraint(group, a, b, color, restLength){
+                this.a = group.particles[a];
+                this.b = group.particles[b];
+                this.restLength = restLength;
+                if(this.restLength == undefined){
+                    this.restLength = Math.hypot(this.a.pos.x - this.b.pos.x, this.a.pos.y - this.b.pos.y);
+                }
+                this.color = color || "#fff";
+            }
+
+            Constraint.prototype.satisfyConstraint = function(){
+                var delta = this.b.pos.sub(this.a.pos);
+                var length = Math.sqrt(delta.dot(delta));
+                var diff = (length - this.restLength)/length;
+                if(this.a.locked){
+                    this.b.pos = this.b.pos.sub(delta.mult(diff));
+                }else if(this.b.locked){
+                    this.a.pos = this.a.pos.add(delta.mult(diff));
+                }else if(!(this.a.locked || this.b.locked)){
+                    this.a.pos = this.a.pos.add(delta.mult(0.5 * diff));
+                    this.b.pos = this.b.pos.sub(delta.mult(0.5 * diff));
+                }else{
+                    //do nothing
+                }
+            };
+
+            Constraint.prototype.render = function(){
+                disp.canvas.strokeStyle = this.color;
+                disp.canvas.line(this.a.pos.x, this.a.pos.y, this.b.pos.x, this.b.pos.y);
+            };
+
+
+
+            function Group(){
+                this.particles = [];
+                this.constraints = [];
+            }
+
+            Group.prototype.addParticle = function(x, y){
+                this.particles.push(new Particle(x, y));
+            };
+
+            Group.prototype.addConstraint = function(a, b, color, length){
+                this.constraints.push(new Constraint(this, a, b, color, length));
+            };
+
+            Group.prototype.verletUpdate = function(timestep){
+                for(var i in this.particles){
+                    this.particles[i].verletUpdate(timestep);
+                }
+            };
+
+            Group.prototype.accumulateForces = function(gravity){
+                for(var i in this.particles){
+                    this.particles[i].force = gravity;
+                }
+            };
+
+            Group.prototype.satisfyConstraints = function(min, max){
+                var collided = false;
+                for(var i in this.particles){
+                    //restrict to max bounds, then to min bounds
+                    var temp = this.particles[i].pos;
+                    this.particles[i].pos = min.max(max.min(this.particles[i].pos));
+                    if(!this.particles[i].pos.equals(temp)){
+                        collided = true;
+                    }
+                }
+
+                for(i in this.constraints){
+                    this.constraints[i].satisfyConstraint();
+                }
+
+                if(collided){
+                    this.onCollide();
+                }
+            };
+
+            Group.prototype.onCollide = function(){ //only for wall collisions
+                //noting here, to be defined by others
+            };
+
+            Group.prototype.render = function(){
+                for(var i in this.particles){
+                    this.particles[i].render();
+                }
+
+                for(i in this.constraints){
+                    this.constraints[i].render();
+                }
+            };
+
+
+
+            function System(gravity, minBound, maxBound){
+                this.particles = [];
+                this.constraints = [];
+                this.groups = [];
+                this.gravity = gravity;
+                this.minBound = minBound;
+                this.maxBound = maxBound;
+                this.timestep = new DeltaTime();
+                this.physicsIterations = 10;
+            }
+
+            System.prototype.verletUpdate = function(){
+                for(var i in this.groups){
+                    this.groups[i].verletUpdate(this.timestep.delta);
+                    if(this.groups[i].destroy){
+                        this.groups.splice(i, 1);
+                        i--;
+                    }
+                }
+            };
+
+            System.prototype.accumulateForces = function(){
+                for(var i in this.groups){
+                    this.groups[i].accumulateForces(this.gravity);
+                }
+            };
+
+            System.prototype.satisfyConstraints = function(){
+                for(var x = 0; x < this.physicsIterations; x++){
+                    for(var i in this.groups){
+                        this.groups[i].satisfyConstraints(this.minBound, this.maxBound);
+                    }
+                }
+            };
+
+            System.prototype.stepTime = function(){
+                this.timestep.findDelta();
+                //to prevent sporadic behavior, drops frames if too many are missed
+                if(this.timestep.delta > 10){
+                    console.log(this.timestep.delta);
+                    this.timestep.delta = 1;
+                }
+                this.accumulateForces();
+                this.verletUpdate();
+                this.satisfyConstraints();
+            };
+
+            System.prototype.render = function(){
+                for(var i in this.groups){
+                    this.groups[i].render();
+                }
+            };
+
+            System.prototype.addGroup = function(group){
+                this.groups.push(group);
+            };
+
+            engine.onload = function(){
+                system = new System(new Vector2(0, 0.1), //gravity
+                                    new Vector2(0, 0), //min bounds
+                                    new Vector2(disp.width, disp.height)); //max bounds
+
+                var ragdoll = new Group();
+                ragdoll.shirtColor = "#0f0";
+                ragdoll.pantColor = "#00f";
+                ragdoll.skinColor = "#fd8";
+
+                ragdoll.addParticle(100, 100); //head 0
+                ragdoll.addParticle(100, 120); //neck 1
+                ragdoll.addConstraint(0, 1, ragdoll.skinColor);
+                ragdoll.addParticle(80, 130); //left shoulder 2
+                ragdoll.addParticle(120, 130); //right shoulder 3
+                ragdoll.addParticle(90, 150); //left ab 4
+                ragdoll.addParticle(110, 150); //right ab 5
+                for(var i = 1; i < 5; i++){ //connect torso
+                    for(var j = i + 1; j < 6; j++){
+                        ragdoll.addConstraint(i, j, ragdoll.shirtColor);
+                    }
+                }
+                ragdoll.addParticle(85, 165); //left hip 6
+                ragdoll.addConstraint(6, 4, ragdoll.shirtColor);
+                ragdoll.addConstraint(6, 5, ragdoll.shirtColor);
+                ragdoll.addParticle(115, 165); //right hip 7
+                ragdoll.addConstraint(7, 4, ragdoll.shirtColor);
+                ragdoll.addConstraint(7, 5, ragdoll.shirtColor);
+                ragdoll.addConstraint(7, 6, ragdoll.pantColor);
+
+                //left arm
+                ragdoll.addParticle(65, 130); //elbow 8
+                ragdoll.addParticle(50, 130); //hand 9
+                ragdoll.addConstraint(8, 9, ragdoll.skinColor);
+                ragdoll.addConstraint(2, 8, ragdoll.shirtColor);
+
+                //right arm
+                ragdoll.addParticle(135, 130); //elbow 10
+                ragdoll.addParticle(150, 130); //hand 11
+                ragdoll.addConstraint(10, 11, ragdoll.skinColor);
+                ragdoll.addConstraint(3, 10, ragdoll.shirtColor);
+
+                //left leg
+                ragdoll.addParticle(85, 180); //knee 12
+                ragdoll.addParticle(85, 195); //foot 13
+                ragdoll.addConstraint(12, 13, ragdoll.skinColor);
+                ragdoll.addConstraint(6, 12, ragdoll.pantColor);
+
+                //right leg
+                ragdoll.addParticle(115, 180); //knee 14
+                ragdoll.addParticle(115, 195); //foot 15
+                ragdoll.addConstraint(14, 15, ragdoll.skinColor);
+                ragdoll.addConstraint(7, 14, ragdoll.pantColor);
+
+                ragdoll.onCollide = function(){
+                    return;
+                    //var angle = this.particles[1].prevPos.angle(this.particles[1].pos);
+                    var point1 = new Vector2(this.particles[1].pos.x, this.particles[1].pos.y);
+                    var point2 = (new Vector2(this.particles[1].pos.x + 15, this.particles[1].pos.y));//.rotate(point1, angle);
+
+                    var blood = new Group();
+                    blood.addParticle(point1.x, point1.y);
+                    blood.addParticle(point2.x, point2.y);
+                    blood.particles[1].prevPos = new Vector2(this.particles[1].pos.x, this.particles[1].pos.y);
+                    blood.addConstraint(0, 1, "#f00");
+                    blood.life = 0;
+                    blood.onCollide = function(){
+                        var tempX = this.particles[1].pos.x;
+                        this.particles[0].prevPos = new Vector2(this.particles[1].pos.x, this.particles[1].pos.y);
+                        this.life++;
+                        if(this.life > 10){
+                            this.destroy = true;
+                        }
+                    };
+                    if(Math.random() > 0.9){
+                        system.addGroup(blood);
+                    }
+                };
+
+                system.addGroup(ragdoll);
+
+                Mouse.init();
+
+                Mouse.addEvent("ondown", getParticleClicked);
+                Mouse.addEvent("onup", resetClick);
+
+                run();
+            };
+
+            function run(){
+                disp.canvas.clearScreen();
+
+                moveTargetParticleToMouse();
+
+                system.stepTime();
+
+                system.render();
+
+                Mouse.update();
+
+                loop(run);
+                //setTimeout(run, 200);
+            }
+
+            function getMousePos(){
+                disp.getPosition();
+                Mouse.x = Mouse.pageX - disp.pageX - window.pageXOffset;
+                Mouse.y = Mouse.pageY - disp.pageY - window.pageYOffset;
+            }
+
+            function getParticleClicked(){
+                getMousePos();
+                var closest = 15;
+                var particleSelected = null;
+                for(var j in system.groups){
+                    for(var i in system.groups[j].particles){
+                        let current = system.groups[j].particles[i].pos;
+                        let distance = Math.hypot(current.x - Mouse.x, current.y - Mouse.y);
+                        if(distance < closest){
+                            closest = distance;
+                            particleSelected = system.groups[j].particles[i];
+                        }
+                    }
+                }
+
+                if(particleSelected !== null){
+                    Mouse.targetParticle = particleSelected;
+                    Mouse.targetParticle.locked = true;
+                }
+            }
+
+            function resetClick(){
+                if(Mouse.targetParticle !== undefined){
+                    Mouse.targetParticle.locked = false;
+                    Mouse.targetParticle = undefined;
+                }
+            }
+
+            function moveTargetParticleToMouse(){
+                getMousePos();
+                if(Mouse.x > 0 && Mouse.x < disp.width && Mouse.y > 0 && Mouse.y < disp.height &&
+                   Mouse.targetParticle !== undefined){
+                    Mouse.targetParticle.pos.x = Mouse.x;
+                    Mouse.targetParticle.pos.y = Mouse.y;
+                    Mouse.targetParticle.prevPos.x = Mouse.x;
+                    Mouse.targetParticle.prevPos.y = Mouse.y;
+                }
+            }
+
+        </script>
+    </head>
+    <body>
+
+    </body>
+</html>

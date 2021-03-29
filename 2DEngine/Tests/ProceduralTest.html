@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>
+            Procedural Test
+        </title>
+        <meta charset="UTF-8"/>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /* global use xyToNumber Display engine*/
+            var disp, black = 0, white = 0, scale = 1;
+            
+            use("display", function(){
+                disp = new Display(800, 450, "#000");
+                disp.setRenderStyle("pixelated");
+            });
+            use("procedural");
+            
+            engine.onload = function(){
+                for(var x = 0; x < disp.width; x++){
+                    for(var y = 0; y < disp.height; y++){
+                        let fill = Math.round(xyToNumber(x/scale, y/scale) * 255);
+                        disp.bitmap.setFill(fill, fill, fill, 255);
+                        disp.bitmap.fillPixel(x, y);
+                        if(fill == 255){
+                            white++;
+                        }else if(fill == 0){
+                            black++;
+                        }
+                    }
+                }
+                disp.setPixels();
+                console.log("Black Pixels:", black, "White Pixels:", white);
+            };
+            
+        </script>
+    </head>
+    <body>
+        
+    </body>
+</html>
+
+<!--
+function xyToNumber(x, y){
+    return Math.pow(Math.sin(x) + Math.cos(y), 2) * (x*x + y*y) % 1;
+}
+-->

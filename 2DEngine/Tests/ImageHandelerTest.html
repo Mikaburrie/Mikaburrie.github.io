@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>
+            Image Handeler Test
+        </title>
+        <meta charset="UTF-8"/>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /* global engine use ImageHandeler Display loop*/
+            var disp, a = 0, b = 0, c = 0, d = 0;
+            use("imageHandeler", function(){
+                ImageHandeler.setLoadingDir("res/");
+                ImageHandeler.addGroup("test");
+            });
+            use("display", function(){
+                disp = new Display(800, 500, "#efefef");
+                disp.canvas.fillStyle = "#0f0";
+                disp.canvas.imageSmoothingEnabled = false;
+            });
+            
+            function init(){
+                ImageHandeler.setDrawSurface(disp.canvas);
+                ImageHandeler.addImage("test", "testImg0", "blob16x16.png", 0, 0, 16, 16);
+                ImageHandeler.addImage("test", "testImg1", "blob32x32.png", 0, 0, 32, 32, 16, 16);
+                ImageHandeler.onimagesloaded = run;
+            }
+            
+            function run(){
+                disp.canvas.clearScreen();
+                
+                a += 0.1;
+                b = Math.sin(a * 0.1);
+                c = Math.cos(b * 90);
+                d = a % (b * c);
+                
+                ImageHandeler.drawImage("test", "testImg0", a % 100 + 20, b * 20 + 50,
+                                        a % 32 + 50, d * 10 + 30);
+                disp.canvas.fillRect(a % 100 + 20, b * 20 + 50, 8, 8);
+                ImageHandeler.drawImage("test", "testImg1", a % 100 + 200, b * 20 + 250,
+                                        a * 2 % 32 + 70, d * 10 + 40);
+                disp.canvas.fillRect(a % 100 + 196, b * 20 + 246, 8, 8);
+                
+                loop(run);
+            }
+            
+            engine.onload = init;
+        </script>
+    </head>
+    <body>
+        notice how origins of images differ
+    </body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>
+            Game Of Life
+        </title>
+        <meta charset="UTF-8"/>
+        <!--<link rel="icon" type="image/png" href="res/blob16x16.png" sizes="16x16">
+        <link rel="icon" type="image/png" href="res/blob32x32.png" sizes="32x32">-->
+        <style type="text/css">
+            #canvas{
+                border:2px solid black;
+            }
+
+            #container{
+                position:absolute;
+                margin:auto;
+                top:0;
+                bottom:0;
+                left:0;
+                right:0;
+            }
+        </style>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /* global use engine loop Display Mouse DeltaTime */
+            var disp, grid, scale, canvasPos, speed, container, dt;
+            use("display", function(){
+                container = document.getElementById("container");
+                disp = new Display(800, 600, "#000", container);
+                disp.canvasElement.setAttribute("id", "canvas");
+                disp.canvas.fillStyle = "#fff";
+                disp.canvas.strokeStyle = "#787878";
+                container.style.width = disp.width + "px";
+                container.style.height = disp.height + 40 + "px";
+                speed = document.createElement("input");
+                speed.type = "range";
+                speed.min = "0";
+                speed.max = "60";
+                speed.value = "10";
+                container.appendChild(speed);
+            });
+            use("mouse");
+            use("time");
+
+            engine.onload = function(){
+                scale = 20;
+                dt = new DeltaTime();
+                grid = new Array(disp.width/scale);
+                grid.width = disp.width/scale;
+                grid.height = disp.height/scale;
+                for(var x = 0; x < grid.width; x++){
+                    grid[x] = new Array(grid.height);
+                    for(var y = 0; y < grid.height; y++){
+                        grid[x][y] = new Cell(x, y);
+                    }
+                }
+
+                Mouse.init();
+
+                run();
+            };
+
+            function run(){
+                Mouse.update();
+                dt.setFps(speed.value);
+                dt.findDelta();
+                if(speed.value == 0){
+                    dt.accumulator = 0;
+                }
+
+                canvasPos = disp.canvasElement.getBoundingClientRect();
+                let cellX = Math.floor((Mouse.pageX - canvasPos.left)/scale),
+                    cellY = Math.floor((Mouse.pageY - canvasPos.top)/scale);
+                if(Mouse.down && cellX >= 0 && cellX < grid.width && cellY >= 0 && cellY < grid.height){
+                    grid[cellX][cellY].alive = true;
+                    dt.accumulator = 0;
+                }else{
+                    dt.loopDelta(function(){
+                        loopCells(function(cell){cell.findNeighbors();});
+                        loopCells(function(cell){cell.update();});
+                    });
+                }
+
+                disp.canvas.clearScreen();
+                loopCells(function(cell){cell.render();});
+
+                loop(run);
+            }
+
+            function Cell(x, y){
+                this.x = x;
+                this.y = y;
+                this.alive = false;
+                this.neighbors = 0;
+            }
+
+            Cell.prototype.findNeighbors = function(){
+                this.neighbors = 0;
+                for(var i = -1; i < 2; i++){
+                    for(var j = -1; j < 2; j++){
+                        if(grid[this.x + i] && grid[this.x + i][this.y + j] && grid[this.x + i][this.y + j].alive){
+                            this.neighbors++;
+                        }
+                    }
+                }
+                if(this.alive){
+                    this.neighbors--;
+                }
+            };
+
+            Cell.prototype.update = function(){
+                if(this.alive){
+                    if(this.neighbors < 2){
+                        this.alive = false;
+                    }else if(this.neighbors < 4){
+
+                    }else{
+                        this.alive = false;
+                    }
+                }else{
+                    if(this.neighbors == 3){
+                        this.alive = true;
+                    }
+                }
+            };
+
+            Cell.prototype.render = function(){
+                if(this.alive){
+                    disp.canvas.fillRect(this.x * scale, this.y * scale, scale, scale);
+                }
+                if(scale >= 5){
+                    disp.canvas.strokeRect(this.x * scale, this.y * scale, scale, scale);
+                }
+            };
+
+            function loopCells(callback){
+                for(var x = 0; x < grid.width; x++){
+                    for(var y = 0; y < grid.height; y++){
+                        callback(grid[x][y]);
+                    }
+                }
+            }
+
+        </script>
+    </head>
+    <body>
+        <div id="container">
+
+        </div>
+    </body>
+</html>

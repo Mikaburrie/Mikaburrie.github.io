@@ -5,30 +5,30 @@
             Stars 3D Test
         </title>
         <meta charset="UTF-8"/>
-        <script type="text/javascript" src="2DEngine/2D.js"></script>
+        <script type="text/javascript" src="../2D.js"></script>
         <script type="text/javascript">
             /*global use Display loop*/
             use("display", stars3d); //uses bitmap from the 2d engine
-
+            
             var disp, stars, delta, time = Date.now(), dt = 1/60; //inits global vars for debugging purposes
             function stars3d(){
                 "use strict"; //use strict can improve performance
                 document.body.style.overflow = "hidden"; //hides scrollbars
-
-                disp = new Display(window.width, window.height, "#000", document.getElementById("background-animation")); //creates bitmap with black bg
+                
+                disp = new Display(window.width-16, window.height-16, "#000"); //creates bitmap with black bg
                 stars = []; //creates star array
-
+                
                 function Star(){ //makes a new star
                     this.reset(); //initializes values
                 }
-
+                
                 Star.prototype.reset = function(){ //for resetting values
                     this.x = randInt(-disp.middleX, disp.middleX); //any x/y on the visible screen
                     this.y = randInt(-disp.middleY, disp.middleY);
                     this.z = 1; //always at 1
                     this.color = [randInt(200, 255), randInt(200, 255), randInt(200, 255)];
                 };
-
+                
                 Star.prototype.update = function(){ //updates star
                     this.z -= 0.002 * delta; //decrease z(distance from camera)
                     if(this.z <= 0 || Math.abs(this.x/this.z) > disp.middleX || //checks if out of view
@@ -36,7 +36,7 @@
                         this.reset(); //resets if true
                     }
                 };
-
+                
                 Star.prototype.render = function(){ //draws to the bitmap
                     let x = this.x/this.z + disp.middleX, y = this.y/this.z + disp.middleY;
                     disp.bitmap.setFill(this.color[0], this.color[1], this.color[2], (1 - this.z) * 1020);
@@ -49,78 +49,41 @@
                         disp.bitmap.fillPixel(x, y - 1);
                         disp.bitmap.fillPixel(x, y + 1);
                     }
-
+                    
                 };
-
+                
                 for(var i = 0; i < 1000; i++){ //loops 1000 times
                     stars.push(new Star()); //adds a new star
                 }
-
+                
                 function randInt(min, max){ //random integer between min and max
                     return Math.floor(Math.random() * (max + 1 - min) + min); //logic for random integer
                 }
-
+                
                 function updateRender(){ //updates and renders all stars
-                    disp.resize(window.width, window.height); //resize to window
-
+                    disp.resize(window.width - 16, window.height - 16); //resize to window
+                    
                     var newTime = Date.now(); //gets current time(in ms)
                     delta = (newTime - time)/(1000*dt); //calculates delta time
                     time = newTime; //sets the time to the current time
-
+                    
                     disp.bitmap.clearScreen(); //clears the entire screen
-
+                    
                     for(var i in stars){ //loops through all stars
                         stars[i].update(); //updates star
                         stars[i].render(); //displays star
                     }
-
+                    
                     disp.setPixels(); //pushes bitmap to actual canvas
-
+                    
                     loop(updateRender); //loops at ~60fps/ups(frames/updates per second)
                 }
-
+                
                 updateRender(); //begin looping
             }
         </script>
-        <link rel="preconnect" href="https://fonts.gstatic.com">
-        <link href="https://fonts.googleapis.com/css2?family=Lato&display=swap" rel="stylesheet">
-        <style media="screen">
-            body {
-                overflow: hidden;
-            }
-
-            .center-vertical-horizontal {
-                position: absolute;
-                margin: auto;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-            }
-
-            #foreground-text {
-                text-align: center;
-                width: 25%;
-                height: 15%;
-                z-index: 1;
-            }
-
-            a {
-                font-family: 'Lato', sans-serif;
-                font-size: 30px;
-                line-height: 40px;
-                color: #80f;
-            }
-        </style>
     </head>
     <body>
-        <div id="background-animation" class="center-vertical-horizontal">
-
-        </div>
-        <div id="foreground-text" class="center-vertical-horizontal">
-            <a href="minesweeper/index.html">Minesweeper</a> <br/>
-            <a href="2DEngine/Tests/SwarmBehavior.html">Boid Simulation</a> <br/>
-            <a href="2DEngine/Tests/GameOfLifeTest.html">Game of Life</a> <br/>
-        </div>
+        
     </body>
 </html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <title>
+            Blobby
+        </title>
+        <meta charset="UTF-8"/>
+        <link rel="icon" type="image/png" href="res/blob16x16.png" sizes="16x16">
+        <link rel="icon" type="image/png" href="res/blob32x32.png" sizes="32x32">
+        <style type="text/css">
+            #canvas{
+                background-color:#000;
+                position:absolute;
+                margin:auto;
+                top:0;
+                bottom:0;
+                left:0;
+                right:0;
+            }
+        </style>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /* global use engine loop Display Mouse DeltaTime */
+            var disp, baseRadius, freq, inc, mouseAngle, mouseDist, threshold, dt;
+            use("display", function(){
+                disp = new Display(500, 500, "#000");
+                disp.canvasElement.setAttribute("id", "canvas");
+                disp.canvas.fillStyle = "#fff";
+            });
+            use("mouse");
+            use("time");
+            
+            engine.onload = function(){
+                Math.PI2 = Math.PI * 2; //360 degrees in rad
+                baseRadius = 100;
+                freq = 2;
+                inc = Math.PI2/100; //40 is min for circleish, 100 works well
+                threshold = 90;
+                dt = new DeltaTime();
+                Mouse.init();
+                run();
+            };
+            
+            function run(){
+                dt.findDelta();
+                
+                disp.canvas.clearScreen();
+                disp.canvas.beginPath();
+                
+                mouseAngle = Math.atan2(Mouse.pageY - window.height/2, Mouse.pageX - window.width/2)/Math.PI * 180;
+                mouseAngle += (mouseAngle < 0 ? 360 : 0);
+                
+                mouseDist = Math.hypot(Mouse.pageY - window.height/2, Mouse.pageX - window.width/2);
+                mouseDist = (mouseDist < baseRadius ? 0 : mouseDist - baseRadius);
+                
+                for(var i = 0; i <= Math.PI2 - inc; i += inc){
+                    let degrees = i/Math.PI*180;
+                    let radius = threshold;
+                    if(Math.abs(mouseAngle - degrees) < threshold){
+                        radius = Math.abs(mouseAngle - degrees);
+                    }else if(Math.abs(mouseAngle - degrees + 360) < threshold){
+                        radius = Math.abs(mouseAngle - degrees + 360);
+                    }else if(Math.abs(mouseAngle - degrees - 360) < threshold){
+                        radius = Math.abs(mouseAngle - degrees - 360);
+                    }
+                    radius = Math.min(Math.pow(Math.abs(radius - threshold), 2)/100, mouseDist);
+                    
+                    radius = (radius < 0 ? baseRadius : radius + baseRadius);
+                    radius += Math.sin(dt.accumulator * 2 + i * 180) * freq;
+                    
+                    disp.canvas.lineTo(Math.cos(i) * radius + disp.middleX, Math.sin(i) * radius + disp.middleY);
+                }
+                
+                disp.canvas.closePath();
+                disp.canvas.fill();
+                
+                Mouse.update();
+                
+                loop(run);
+                //setTimeout(run, 500);
+            }
+
+        </script>
+    </head>
+    <body>
+        
+    </body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Web RTC Test</title>
+        <meta charset="UTF-8"/>
+        <script type="text/javascript" src="../2D.js"></script>
+        <script type="text/javascript">
+            /* global use RTC engine */
+            use("webRTC", function(){
+                
+            });
+            
+            function displayStream(stream){
+                if(stream){
+                //    document.getElementById("camDisplay").srcObject = stream;
+                }
+            }
+            
+            function init(){
+                RTC.onmedia = function(streams){document.getElementById("camDisplay").srcObject = streams[0];};
+                RTC.init("wss://game-to-be-renamed-mikaburrie.c9users.io", {iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+                //RTC.addMediaTrack(true, false, displayStream);
+            }
+            
+            engine.onload = init;
+        </script>
+    </head>
+    <body>
+        <video id="camDisplay" autoplay muted></video>
+    </body>
+</html>

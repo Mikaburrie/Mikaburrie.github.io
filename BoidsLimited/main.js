@@ -253,11 +253,37 @@ class Boid {
 
 class Boids {
     constructor(count, width, height) {
+        this.container = document.createElement("div")
+        this.container.style.margin = "auto"
+        document.body.appendChild(this.container)
+
         this.canvas = document.createElement("canvas")
         this.canvas.width = width
         this.canvas.height = height
         this.canvas.style.backgroundColor = "#222"
-        document.body.appendChild(this.canvas)
+        this.container.appendChild(this.canvas)
+
+        this.btnToggleRange = document.createElement("button")
+        this.btnToggleRange.innerText = "Show Range"
+        this.btnToggleRange.onclick = () => {
+            BoidOptions.drawRange = !BoidOptions.drawRange
+            this.btnToggleRange.innerText = BoidOptions.drawRange ? "Hide Range" : "Show Range"
+        }
+        document.body.appendChild(this.btnToggleRange)
+
+        this.btnToggleFOV = document.createElement("button")
+        this.btnToggleFOV.innerText = "Limit FOV"
+        this.btnToggleFOV.onclick = () => {
+            if (BoidOptions.fov < Math.PI) {
+                BoidOptions.fov = 2*Math.PI
+                this.btnToggleFOV.innerText = "Limit FOV"
+            } else {
+                BoidOptions.fov = Math.PI/3
+                this.btnToggleFOV.innerText = "Expand FOV"
+            }
+            Boid.calculatePaths()
+        }
+        document.body.appendChild(this.btnToggleFOV)
 
         this.boids = BoidOptions.generate(count)
     }
